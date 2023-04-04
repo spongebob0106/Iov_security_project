@@ -1,0 +1,6 @@
+#car density params
+radir: 400
+neighbors_number: 30
+
+# LOF params
+lof_threshold: 1.5
