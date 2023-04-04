@@ -9,7 +9,9 @@ src/**/*_m.cc
 subprojects/veins_inet/.settings
 doc/doxy
 doc/neddoc
-src/veins/modules/application/traci/data/
+src/veins/modules/application/traci/data/*.csv
+src/veins/modules/application/traci/data/*.png
+
 /bin/veins_run
 .vscode
 
