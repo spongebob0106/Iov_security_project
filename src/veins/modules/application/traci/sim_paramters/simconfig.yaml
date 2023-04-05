@@ -1,5 +1,5 @@
 #car density params
-radir: 400
+radir: 500
 neighbors_number: 30
 
 # LOF params

@@ -117,7 +117,7 @@ void TraCIDemo11p::handleSelfMsg(cMessage* msg)
     if (TraCIDemo11pMessage* wsm = dynamic_cast<TraCIDemo11pMessage*>(msg)) {
         DemoSafetyMessage* bsm = new DemoSafetyMessage();
         populateWSM(bsm);
-        density_own = getCurrentDensity(radir, neighbors_number);
+        density_own = getCurrentDensity(neighbors_number, radir);
         bsm->setCarid(car_id);
         bsm->setSpeed(mobility->getSpeed());
         bsm->setSenderCalDensity(density_own);
@@ -196,7 +196,7 @@ double TraCIDemo11p::getCurrentDensity(int K, double r)
     double Dk = 0;
     double rho = 0;
     std::vector<std::pair<double, int>> distances;
-    static int i = 0;
+    int i = 0;
     // 计算点P到其他点的距离
     for (auto it = beasons_map.begin(); it != beasons_map.end(); it++) {
         std::vector<double>& vec = it->second;
@@ -224,6 +224,5 @@ double TraCIDemo11p::getCurrentDensity(int K, double r)
 
     // 计算密度估计值
     rho = (K / (M_PI * Dk * Dk)) * 1000;
-    i = 0;
     return rho;
 }
