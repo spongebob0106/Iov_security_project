@@ -44,6 +44,9 @@ void TraCIDemo11p::initialize(int stage)
         radir = config["radir"].as<int>();
         neighbors_number = config["neighbors_number"].as<int>();
         lof_threshold = config["lof_threshold"].as<float>();
+        k_distance = config["k_distance"].as<int>();
+        k_nearest_neighors = config["k_nearest_neighors"].as<int>();
+        minpts = config["minpts"].as<int>();
 
         // output data
         std::string externalid =  mobility->getExternalId();
@@ -109,6 +112,30 @@ void TraCIDemo11p::onBSM(DemoSafetyMessage* bsm)
        beasons_map.emplace(std::make_pair(bsm->getCarid(), std::vector<double>{bsm->getSpeed(), 
        bsm->getSenderCalDensity(), bsm->getSenderPos().distance(curPosition)}));
     }
+
+    last_points.assign(cur_points.begin(), cur_points.end());
+    int i = 0;
+    for (; i < cur_points.size(); i++)
+    {
+        if (cur_points[i].id == bsm->getCarid())
+        {
+            cur_points[i].senderPos = bsm->getSenderPos();
+            cur_points[i].senderSpeed = bsm->getSenderSpeed();  
+            cur_points[i].senderCalDensity = bsm->getSenderCalDensity();
+            cur_points[i].senderFlow = bsm->getSenderFlow();                  
+            break;
+        }
+    }
+    if (i == cur_points.size() || cur_points.size() == 0)
+    {
+        Point point;
+        point.senderPos = bsm->getSenderPos();
+        point.senderSpeed = bsm->getSenderSpeed();    
+        point.senderCalDensity = bsm->getSenderCalDensity();
+        point.senderFlow = bsm->getSenderFlow(); 
+        point.id = bsm->getCarid();
+        cur_points.push_back(point);
+    }
 }
 
 
@@ -138,13 +165,26 @@ void TraCIDemo11p::handleSelfMsg(cMessage* msg)
         rcv_flow_avg = rcv_flow_sum / beasons_map.size();
         flow_own = rcv_speed_avg * density_own;
         bsm->setSenderFlow(rcv_flow_avg);
-        sendDown(bsm);
 
         // record data
         simtime_t simTime_ = simTime();
         double seconds = simTime_.dbl();
-
         outfile << car_id << "," << seconds << "," << density_own << "," << flow_own << "," << mobility->getSpeed() << "," << rcv_speed_avg << std::endl;
+        
+        // calc lof
+        lof(cur_points, k_nearest_neighors, minpts);
+        for (int i = 0; i < cur_points.size(); i++)
+        {
+            if (cur_points[i].lof > lof_threshold)
+            {
+                // abormal
+            }
+            {
+                // normal
+            }
+
+        }
+        sendDown(bsm);
         scheduleAt(simTime() + 1, wsm);
     }
     else {

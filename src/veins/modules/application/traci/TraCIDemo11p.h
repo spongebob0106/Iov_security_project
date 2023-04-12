@@ -66,14 +66,21 @@ protected:
     CryptoManage* crypto_manage = nullptr;
     int64_t car_id;
     std::map<int64_t, std::vector<double>> beasons_map;
+    std::map<int64_t, double> lof_value;
     double rcv_speed_avg;
     double rcv_flow_avg;
     double flow_own;
     double density_own;
-    std::vector<Point> points;
+    std::vector<Point> last_points;
+    std::vector<Point> cur_points;
+    // Variadic parameters
     int radir;
     int neighbors_number;
     float lof_threshold;
+    int k_distance;
+    int k_nearest_neighors;
+    int minpts;
+
     std::ofstream outfile;
 
 protected:

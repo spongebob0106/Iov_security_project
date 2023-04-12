@@ -4,3 +4,6 @@ neighbors_number: 30
 
 # LOF params
 lof_threshold: 1.5
+k_distance: 10
+k_nearest_neighors: 5
+minpts: 10
