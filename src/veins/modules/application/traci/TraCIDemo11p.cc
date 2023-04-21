@@ -47,7 +47,12 @@ void TraCIDemo11p::initialize(int stage)
         k_distance = config["k_distance"].as<int>();
         k_nearest_neighors = config["k_nearest_neighors"].as<int>();
         minpts = config["minpts"].as<int>();
-
+        sybil_params.fake_id = config["fake_id"].as<int>();
+        sybil_params.fake_speed = config["fake_speed"].as<double>();
+        sybil_params.fake_density = config["fake_density"].as<double>();
+        sybil_params.fake_flow = config["fake_flow"].as<double>();
+        sybil_params.fake_rate = config["fake_rate"].as<double>();
+        sybil_params.attack_time = config["attack_time"].as<int>();
         // output data
         std::string externalid =  mobility->getExternalId();
         int pos = externalid.find(".");
@@ -55,12 +60,15 @@ void TraCIDemo11p::initialize(int stage)
                externalid.erase(pos, 1);
            }
         std::string file_name = "/home/veins/src/veins/src/veins/modules/application/traci/data/data_" + externalid + ".csv";
+        std::string debug_file_name = "/home/veins/src/veins/src/veins/modules/application/traci/data/debug_" + externalid + ".log";
         outfile.open(file_name);
+        debugfile.open(debug_file_name);
         outfile << "car_id,time,density_own,flow_own,speed_own,rcv_speed_avg" << std::endl;
 
         id_manage = ta.getIDManage();
         crypto_manage = ta.getCryptoManage();
         car_id = id_manage->GetID();
+        cars.push_back(std::make_pair(car_id, false));
         // char s[150];
         // std::snprintf(s, 150, "notify-send normal \"Car ID: #%ld Initialize\"", car_id);
         // std::system(s);
@@ -120,7 +128,7 @@ void TraCIDemo11p::onBSM(DemoSafetyMessage* bsm)
         if (cur_points[i].id == bsm->getCarid())
         {
             cur_points[i].senderPos = bsm->getSenderPos();
-            cur_points[i].senderSpeed = bsm->getSenderSpeed();  
+            cur_points[i].speed = bsm->getSpeed();  
             cur_points[i].senderCalDensity = bsm->getSenderCalDensity();
             cur_points[i].senderFlow = bsm->getSenderFlow();                  
             break;
@@ -130,7 +138,7 @@ void TraCIDemo11p::onBSM(DemoSafetyMessage* bsm)
     {
         Point point;
         point.senderPos = bsm->getSenderPos();
-        point.senderSpeed = bsm->getSenderSpeed();    
+        point.speed = bsm->getSpeed();    
         point.senderCalDensity = bsm->getSenderCalDensity();
         point.senderFlow = bsm->getSenderFlow(); 
         point.id = bsm->getCarid();
@@ -138,49 +146,88 @@ void TraCIDemo11p::onBSM(DemoSafetyMessage* bsm)
     }
 }
 
-
 void TraCIDemo11p::handleSelfMsg(cMessage* msg)
 {
     if (TraCIDemo11pMessage* wsm = dynamic_cast<TraCIDemo11pMessage*>(msg)) {
         DemoSafetyMessage* bsm = new DemoSafetyMessage();
         populateWSM(bsm);
-        density_own = getCurrentDensity(neighbors_number, radir);
-        bsm->setCarid(car_id);
-        bsm->setSpeed(mobility->getSpeed());
-        bsm->setSenderCalDensity(density_own);
-        double rcv_speed_sum = 0;
-        double rcv_flow_sum = 0;
-        for (auto it = beasons_map.begin(); it != beasons_map.end(); it++) {
-            std::vector<double>& vec = it->second;
-            rcv_speed_sum += vec[0];
-        }
-        if (beasons_map.size() != 0)
-        {
-            rcv_speed_avg = rcv_speed_sum / beasons_map.size();
-        }
-        for (auto it = beasons_map.begin(); it != beasons_map.end(); it++) {
-            std::vector<double>& vec = it->second;
-            rcv_flow_sum += rcv_speed_avg * vec[1];
-        }
-        rcv_flow_avg = rcv_flow_sum / beasons_map.size();
-        flow_own = rcv_speed_avg * density_own;
-        bsm->setSenderFlow(rcv_flow_avg);
-
-        // record data
         simtime_t simTime_ = simTime();
-        double seconds = simTime_.dbl();
+        int seconds = simTime_.dbl();
+        // start sybil attack
+        if (seconds == sybil_params.attack_time && attack_flag == false)
+        {
+            // Assign malicious cars
+            int malicious_car_numbers = cars.size() * sybil_params.fake_rate;
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_int_distribution<int> dis(0, cars.size()-1);
+            for (int i = 0; i < malicious_car_numbers; i++) {
+                int randomIndex = dis(gen);
+                cars[randomIndex].second = true;
+                maliciouscarsfile << cars[randomIndex].first << std::endl;
+            }
+            attack_flag = true;
+        }
+        if (attack_flag == true && is_malicious == false)
+        {
+            for (int i = 0; i < cars.size(); i++)
+            {
+                if (cars[i].first == car_id)
+                {
+                    is_malicious = cars[i].second;
+                }
+            }
+        }
+        if (!is_malicious)
+        {
+            density_own = getCurrentDensity(neighbors_number, radir);
+            double rcv_speed_sum = 0;
+            double rcv_flow_sum = 0;
+            for (auto it = beasons_map.begin(); it != beasons_map.end(); it++) {
+                std::vector<double>& vec = it->second;
+                rcv_speed_sum += vec[0];
+            }
+            if (beasons_map.size() != 0)
+            {
+                rcv_speed_avg = rcv_speed_sum / beasons_map.size();
+            }
+            for (auto it = beasons_map.begin(); it != beasons_map.end(); it++) {
+                std::vector<double>& vec = it->second;
+                rcv_flow_sum += rcv_speed_avg * vec[1];
+            }
+            rcv_flow_avg = rcv_flow_sum / beasons_map.size();
+            flow_own = rcv_speed_avg * density_own;
+            bsm->setCarid(car_id);
+            bsm->setSpeed(mobility->getSpeed());
+            bsm->setSenderCalDensity(density_own);
+            bsm->setSenderFlow(rcv_flow_avg);
+        }
+        else 
+        {
+            bsm->setCarid(car_id);
+            bsm->setSpeed(sybil_params.fake_speed);
+            bsm->setSenderCalDensity(sybil_params.fake_density);
+            bsm->setSenderFlow(sybil_params.fake_flow);
+        }
+        // record data
         outfile << car_id << "," << seconds << "," << density_own << "," << flow_own << "," << mobility->getSpeed() << "," << rcv_speed_avg << std::endl;
         
         // calc lof
         lof(cur_points, k_nearest_neighors, minpts);
+        debugfile << "new start car_id: " << car_id << std::endl;
         for (int i = 0; i < cur_points.size(); i++)
         {
-            if (cur_points[i].lof > lof_threshold)
-            {
+            debugfile << "neighors Point: " << i << std::endl;
+            debugfile << "Id: " << cur_points[i].id << " Time: " << seconds << " Speed: " << cur_points[i].speed 
+            << " Density: " << cur_points[i].senderCalDensity << " Flow: " << cur_points[i].senderFlow
+            << " lrd: " << cur_points[i].lrd << " lof: " << cur_points[i].lof;
+            if (cur_points[i].lof > lof_threshold) {
                 // abormal
+                debugfile << " abormal cars" << std::endl;
             }
             {
                 // normal
+                debugfile << " normal cars" << std::endl;
             }
 
         }
@@ -198,10 +245,20 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
     findHost()->getDisplayString().setTagArg("i", 1, "red");
     DemoSafetyMessage* bsm = new DemoSafetyMessage();
     populateWSM(bsm);
-    bsm->setCarid(car_id);
-    bsm->setSpeed(mobility->getSpeed());
-    bsm->setSenderCalDensity(density_own);
-    bsm->setSenderFlow(rcv_flow_avg);
+    if (!is_malicious)
+    {
+        bsm->setCarid(car_id);
+        bsm->setSpeed(mobility->getSpeed());
+        bsm->setSenderCalDensity(density_own);
+        bsm->setSenderFlow(rcv_flow_avg);
+    }
+    else
+    {
+        bsm->setCarid(car_id);
+        bsm->setSpeed(sybil_params.fake_speed);
+        bsm->setSenderCalDensity(sybil_params.fake_density);
+        bsm->setSenderFlow(sybil_params.fake_flow);
+    }
     sendDown(bsm);
 
     // // stopped for for at least 10s?

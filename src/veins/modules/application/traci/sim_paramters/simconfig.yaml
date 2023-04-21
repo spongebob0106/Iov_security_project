@@ -3,7 +3,15 @@ radir: 500
 neighbors_number: 30
 
 # LOF params
-lof_threshold: 1.5
+lof_threshold: 2
 k_distance: 10
 k_nearest_neighors: 5
 minpts: 10
+
+# sybil attack params
+fake_id: 1
+fake_speed: 0
+fake_density: 5
+fake_flow: 20
+fake_rate: 0.1
+attack_time: 200

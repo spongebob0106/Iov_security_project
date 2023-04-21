@@ -20,13 +20,13 @@ public:
     {
     }
 
-    Point(int64_t id_, Coord senderPos_, Coord senderSpeed_, double senderCalDensity_, double senderFlow_): id(id_), senderPos(senderPos_), 
-        senderSpeed(senderSpeed_), senderCalDensity(senderCalDensity_), senderFlow(senderFlow_)
+    Point(int64_t id_, Coord senderPos_, double speed_, double senderCalDensity_, double senderFlow_): id(id_), senderPos(senderPos_), 
+        speed(speed_), senderCalDensity(senderCalDensity_), senderFlow(senderFlow_)
     {
     }
     int64_t id;
     Coord senderPos;
-    Coord senderSpeed;
+    double speed;
     double senderCalDensity;
     double senderFlow;
     // lof
@@ -43,7 +43,7 @@ public:
 double computeDistance(Point& a, Point& b) {
     double sum = 0.0;
     // sum += a.senderPos.sqrdist(b.senderPos);
-    sum += a.senderSpeed.sqrdist(b.senderSpeed);
+    sum += pow(a.speed - b.speed, 2);;
     sum += pow(a.senderCalDensity - b.senderCalDensity, 2);
     sum += pow(a.senderFlow - b.senderFlow, 2);
     return sqrt(sum);

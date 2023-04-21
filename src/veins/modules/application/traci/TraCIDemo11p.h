@@ -31,6 +31,8 @@
 #include <omnetpp.h>
 #include <fstream>
 #include <iostream>
+#include <random>
+#include <algorithm>
 
 namespace veins {
 
@@ -47,7 +49,14 @@ namespace veins {
  * @author David Eckhoff : rewriting, moving functionality to DemoBaseApplLayer, adding WSA
  *
  */
-
+struct SybilAttackParams {
+    int fake_id;
+    double fake_speed;
+    double fake_density;
+    double fake_flow;
+    float fake_rate;
+    int attack_time;
+};
 
 class VEINS_API TraCIDemo11p : public DemoBaseApplLayer {
 public:
@@ -55,6 +64,7 @@ public:
     ~TraCIDemo11p()
     {
         outfile.close();
+        debugfile.close();
     }
 
 protected:
@@ -80,9 +90,14 @@ protected:
     int k_distance;
     int k_nearest_neighors;
     int minpts;
-
+    //sybli params
+    SybilAttackParams sybil_params;
+    static std::vector<std::pair<int64_t, bool>> cars;
+    static bool attack_flag; 
     std::ofstream outfile;
-
+    std::ofstream debugfile;
+    static std::ofstream maliciouscarsfile;
+    bool is_malicious = false;
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;
     void onWSA(DemoServiceAdvertisment* wsa) override;
@@ -93,5 +108,10 @@ protected:
     
     double getCurrentDensity(int K, double r);
 };
+
+// sttaic init
+bool TraCIDemo11p::attack_flag = false;
+std::vector<std::pair<int64_t, bool>> TraCIDemo11p::cars = {};
+std::ofstream TraCIDemo11p::maliciouscarsfile("/home/veins/src/veins/src/veins/modules/application/traci/data/malicious_cars.log");
 
 } // namespace veins
