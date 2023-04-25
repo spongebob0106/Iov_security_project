@@ -14,4 +14,4 @@ fake_speed: 0
 fake_density: 5
 fake_flow: 20
 fake_rate: 0.1
-attack_time: 200
+attack_time: 1000

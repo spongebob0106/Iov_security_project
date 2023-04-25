@@ -217,17 +217,18 @@ void TraCIDemo11p::handleSelfMsg(cMessage* msg)
         debugfile << "new start car_id: " << car_id << std::endl;
         for (int i = 0; i < cur_points.size(); i++)
         {
+            // record debug data
             debugfile << "neighors Point: " << i << std::endl;
             debugfile << "Id: " << cur_points[i].id << " Time: " << seconds << " Speed: " << cur_points[i].speed 
             << " Density: " << cur_points[i].senderCalDensity << " Flow: " << cur_points[i].senderFlow
             << " lrd: " << cur_points[i].lrd << " lof: " << cur_points[i].lof;
             if (cur_points[i].lof > lof_threshold) {
                 // abormal
-                debugfile << " abormal cars" << std::endl;
+                debugfile << " abormal car" << std::endl;
             }
             {
                 // normal
-                debugfile << " normal cars" << std::endl;
+                debugfile << " normal car" << std::endl;
             }
 
         }
