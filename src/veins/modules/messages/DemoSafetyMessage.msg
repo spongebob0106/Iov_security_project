@@ -36,7 +36,7 @@ packet DemoSafetyMessage extends BaseFrame1609_4 {
     int64_t carid = 0;
     Coord senderPos;
     Coord senderSpeed;
-    double speed;
+    double carSpeed;
     double senderCalDensity;
     double senderFlow;
 }

@@ -44,7 +44,7 @@ simple TraCIMobility extends BaseMobility
         @signal[org_car2x_veins_modules_mobility_parkingStateChanged](type=veins::TraCIMobility);
         @display("i=block/cogwheel");
         double hostPositionOffset @unit("m") = default(0.0m);  // shift OMNeT++ module this far from front of the car
-        bool setHostSpeed = default(false);  // whether to update the speed of the host (along with its position)
+        bool setHostSpeed = default(true);  // whether to update the speed of the host (along with its position)
         int accidentCount = default(0);  // number of accidents
         double accidentStart @unit("s") = default(uniform(30s,60s));  // time until first accident, relative to departure time
         volatile double accidentDuration @unit("s") = default(uniform(30s,60s));  // duration of accident

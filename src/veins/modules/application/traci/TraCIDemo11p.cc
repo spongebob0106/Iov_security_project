@@ -113,11 +113,11 @@ void TraCIDemo11p::onBSM(DemoSafetyMessage* bsm)
     findHost()->getDisplayString().setTagArg("i", 1, "green");
     auto it = beasons_map.find(bsm->getCarid());
     if (it != beasons_map.end()) {
-        it->second.assign({bsm->getSpeed(), bsm->getSenderCalDensity(), bsm->getSenderPos().distance(curPosition)});
+        it->second.assign({bsm->getCarSpeed(), bsm->getSenderCalDensity(), bsm->getSenderPos().distance(curPosition)});
     }
     else
     {
-       beasons_map.emplace(std::make_pair(bsm->getCarid(), std::vector<double>{bsm->getSpeed(), 
+       beasons_map.emplace(std::make_pair(bsm->getCarid(), std::vector<double>{bsm->getCarSpeed(), 
        bsm->getSenderCalDensity(), bsm->getSenderPos().distance(curPosition)}));
     }
 
@@ -128,7 +128,7 @@ void TraCIDemo11p::onBSM(DemoSafetyMessage* bsm)
         if (cur_points[i].id == bsm->getCarid())
         {
             cur_points[i].senderPos = bsm->getSenderPos();
-            cur_points[i].speed = bsm->getSpeed();  
+            cur_points[i].speed = bsm->getCarSpeed();  
             cur_points[i].senderCalDensity = bsm->getSenderCalDensity();
             cur_points[i].senderFlow = bsm->getSenderFlow();                  
             break;
@@ -138,7 +138,7 @@ void TraCIDemo11p::onBSM(DemoSafetyMessage* bsm)
     {
         Point point;
         point.senderPos = bsm->getSenderPos();
-        point.speed = bsm->getSpeed();    
+        point.speed = bsm->getCarSpeed();    
         point.senderCalDensity = bsm->getSenderCalDensity();
         point.senderFlow = bsm->getSenderFlow(); 
         point.id = bsm->getCarid();
@@ -198,14 +198,16 @@ void TraCIDemo11p::handleSelfMsg(cMessage* msg)
             rcv_flow_avg = rcv_flow_sum / beasons_map.size();
             flow_own = rcv_speed_avg * density_own;
             bsm->setCarid(car_id);
-            bsm->setSpeed(mobility->getSpeed());
+            bsm->setCarSpeed(curSpeed.length());
             bsm->setSenderCalDensity(density_own);
             bsm->setSenderFlow(rcv_flow_avg);
         }
         else 
         {
             bsm->setCarid(car_id);
-            bsm->setSpeed(sybil_params.fake_speed);
+            bsm->setCarSpeed(sybil_params.fake_speed);
+            Coord fake_speed_coord(sybil_params.fake_speed, sybil_params.fake_speed);
+            bsm->setSenderSpeed(fake_speed_coord);
             bsm->setSenderCalDensity(sybil_params.fake_density);
             bsm->setSenderFlow(sybil_params.fake_flow);
         }
@@ -249,14 +251,16 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
     if (!is_malicious)
     {
         bsm->setCarid(car_id);
-        bsm->setSpeed(mobility->getSpeed());
+        bsm->setCarSpeed(curSpeed.length());
         bsm->setSenderCalDensity(density_own);
         bsm->setSenderFlow(rcv_flow_avg);
     }
     else
     {
         bsm->setCarid(car_id);
-        bsm->setSpeed(sybil_params.fake_speed);
+        bsm->setCarSpeed(sybil_params.fake_speed);
+        Coord fake_speed_coord(sybil_params.fake_speed, sybil_params.fake_speed);
+        bsm->setSenderSpeed(fake_speed_coord);
         bsm->setSenderCalDensity(sybil_params.fake_density);
         bsm->setSenderFlow(sybil_params.fake_flow);
     }
