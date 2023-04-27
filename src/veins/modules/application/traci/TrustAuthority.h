@@ -5,6 +5,7 @@
 #include "veins/modules/application/traci/crypto_manage/crypto_manage.h"
 #include "veins/modules/application/traci/id_manage/snowflake/snowflake.h"
 #include "veins/modules/application/traci/crypto_manage/DVNCrypto/DVNCrypto.h"
+#include <map>
 
 class TrustAuthority
 {
@@ -12,7 +13,7 @@ public:
     ~TrustAuthority() 
     {
         delete id_manage;
-        // delete crypto_manage;
+        delete crypto_manage;
     }
 
     // void initialize();
@@ -23,6 +24,9 @@ public:
         static TrustAuthority instance;
         return instance;
     }
+    void registerAPI(int64_t id);
+    void unregitsterAPI(int64_t id);
+    void reportNodeStatus(int64_t id, bool is_malicious);
 private:
     TrustAuthority() {
         snowflakeFactory snowflakefactory;
@@ -34,8 +38,7 @@ private:
     }
     IDManage* id_manage = nullptr;
     CryptoManage* crypto_manage = nullptr;
+    std::map<int64_t, int> registered_cars;
 };
-
-
 
 #endif

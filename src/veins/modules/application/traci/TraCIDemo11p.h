@@ -60,6 +60,7 @@ struct SybilAttackParams {
 
 class VEINS_API TraCIDemo11p : public DemoBaseApplLayer {
 public:
+    void getSimparamters();
     void initialize(int stage) override;
     ~TraCIDemo11p()
     {
@@ -75,8 +76,6 @@ protected:
     IDManage* id_manage = nullptr;
     CryptoManage* crypto_manage = nullptr;
     int64_t car_id;
-    std::map<int64_t, std::vector<double>> beasons_map;
-    std::map<int64_t, double> lof_value;
     double rcv_speed_avg;
     double rcv_flow_avg;
     double flow_own;
@@ -90,6 +89,7 @@ protected:
     int k_distance;
     int k_nearest_neighors;
     int minpts;
+    float with_defense_cars_rate;
     //sybli params
     SybilAttackParams sybil_params;
     static std::vector<std::pair<int64_t, bool>> cars;
@@ -98,6 +98,7 @@ protected:
     std::ofstream debugfile;
     static std::ofstream maliciouscarsfile;
     bool is_malicious = false;
+    bool is_with_defence = false;
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;
     void onWSA(DemoServiceAdvertisment* wsa) override;
@@ -107,6 +108,7 @@ protected:
     void handlePositionUpdate(cObject* obj) override;
     
     double getCurrentDensity(int K, double r);
+    void dataHandle(int time);
 };
 
 // sttaic init

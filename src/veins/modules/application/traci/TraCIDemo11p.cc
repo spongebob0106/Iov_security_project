@@ -27,6 +27,26 @@ using namespace veins;
 
 Define_Module(veins::TraCIDemo11p);
 
+void TraCIDemo11p::getSimparamters()
+{
+
+    YAML::Node config = YAML::LoadFile("/home/veins/src/veins/src/veins/modules/application/traci/sim_paramters/simconfig.yaml");
+    radir = config["radir"].as<int>();
+    neighbors_number = config["neighbors_number"].as<int>();
+    lof_threshold = config["lof_threshold"].as<float>();
+    k_distance = config["k_distance"].as<int>();
+    k_nearest_neighors = config["k_nearest_neighors"].as<int>();
+    minpts = config["minpts"].as<int>();
+    with_defense_cars_rate = config["with_defense_cars_rate"].as<float>();
+    sybil_params.fake_id = config["fake_id"].as<int>();
+    sybil_params.fake_speed = config["fake_speed"].as<double>();
+    sybil_params.fake_density = config["fake_density"].as<double>();
+    sybil_params.fake_flow = config["fake_flow"].as<double>();
+    sybil_params.fake_rate = config["fake_rate"].as<double>();
+    sybil_params.attack_time = config["attack_time"].as<int>();
+}
+
+
 void TraCIDemo11p::initialize(int stage)
 {
     DemoBaseApplLayer::initialize(stage);
@@ -38,21 +58,8 @@ void TraCIDemo11p::initialize(int stage)
         rcv_flow_avg = 0;
         flow_own = 0;
         density_own = 0;
-
         // sim paramters setup
-        YAML::Node config = YAML::LoadFile("/home/veins/src/veins/src/veins/modules/application/traci/sim_paramters/simconfig.yaml");
-        radir = config["radir"].as<int>();
-        neighbors_number = config["neighbors_number"].as<int>();
-        lof_threshold = config["lof_threshold"].as<float>();
-        k_distance = config["k_distance"].as<int>();
-        k_nearest_neighors = config["k_nearest_neighors"].as<int>();
-        minpts = config["minpts"].as<int>();
-        sybil_params.fake_id = config["fake_id"].as<int>();
-        sybil_params.fake_speed = config["fake_speed"].as<double>();
-        sybil_params.fake_density = config["fake_density"].as<double>();
-        sybil_params.fake_flow = config["fake_flow"].as<double>();
-        sybil_params.fake_rate = config["fake_rate"].as<double>();
-        sybil_params.attack_time = config["attack_time"].as<int>();
+        getSimparamters();
         // output data
         std::string externalid =  mobility->getExternalId();
         int pos = externalid.find(".");
@@ -68,13 +75,16 @@ void TraCIDemo11p::initialize(int stage)
         id_manage = ta.getIDManage();
         crypto_manage = ta.getCryptoManage();
         car_id = id_manage->GetID();
+        ta.registerAPI(car_id);
         cars.push_back(std::make_pair(car_id, false));
+
         // char s[150];
         // std::snprintf(s, 150, "notify-send normal \"Car ID: #%ld Initialize\"", car_id);
         // std::system(s);
 
         TraCIDemo11pMessage* wsm = new TraCIDemo11pMessage();
         populateWSM(wsm);
+        is_with_defence = bernoulli(with_defense_cars_rate);
         // wsm->setDemoData(mobility->getRoadId().c_str());
         scheduleAt(simTime() + 1, wsm);
     }
@@ -111,16 +121,6 @@ void TraCIDemo11p::onBSM(DemoSafetyMessage* bsm)
     // std::snprintf(s, 150, "notify-send normal \"Car ID: #%ld receive ID :%ld \"", car_id, bsm->getCarid());
     // std::system(s);
     findHost()->getDisplayString().setTagArg("i", 1, "green");
-    auto it = beasons_map.find(bsm->getCarid());
-    if (it != beasons_map.end()) {
-        it->second.assign({bsm->getCarSpeed(), bsm->getSenderCalDensity(), bsm->getSenderPos().distance(curPosition)});
-    }
-    else
-    {
-       beasons_map.emplace(std::make_pair(bsm->getCarid(), std::vector<double>{bsm->getCarSpeed(), 
-       bsm->getSenderCalDensity(), bsm->getSenderPos().distance(curPosition)}));
-    }
-
     last_points.assign(cur_points.begin(), cur_points.end());
     int i = 0;
     for (; i < cur_points.size(); i++)
@@ -178,61 +178,23 @@ void TraCIDemo11p::handleSelfMsg(cMessage* msg)
                 }
             }
         }
-        if (!is_malicious)
-        {
-            density_own = getCurrentDensity(neighbors_number, radir);
-            double rcv_speed_sum = 0;
-            double rcv_flow_sum = 0;
-            for (auto it = beasons_map.begin(); it != beasons_map.end(); it++) {
-                std::vector<double>& vec = it->second;
-                rcv_speed_sum += vec[0];
-            }
-            if (beasons_map.size() != 0)
-            {
-                rcv_speed_avg = rcv_speed_sum / beasons_map.size();
-            }
-            for (auto it = beasons_map.begin(); it != beasons_map.end(); it++) {
-                std::vector<double>& vec = it->second;
-                rcv_flow_sum += rcv_speed_avg * vec[1];
-            }
-            rcv_flow_avg = rcv_flow_sum / beasons_map.size();
-            flow_own = rcv_speed_avg * density_own;
+
+        outfile << car_id << "," << seconds << "," << density_own << "," << flow_own << "," << mobility->getSpeed() << "," << rcv_speed_avg << std::endl;
+        dataHandle(seconds);
+        // package bsm message
+        if (!is_malicious) {
             bsm->setCarid(car_id);
             bsm->setCarSpeed(curSpeed.length());
             bsm->setSenderCalDensity(density_own);
             bsm->setSenderFlow(rcv_flow_avg);
         }
-        else 
-        {
+        else {
             bsm->setCarid(car_id);
             bsm->setCarSpeed(sybil_params.fake_speed);
             Coord fake_speed_coord(sybil_params.fake_speed, sybil_params.fake_speed);
             bsm->setSenderSpeed(fake_speed_coord);
             bsm->setSenderCalDensity(sybil_params.fake_density);
             bsm->setSenderFlow(sybil_params.fake_flow);
-        }
-        // record data
-        outfile << car_id << "," << seconds << "," << density_own << "," << flow_own << "," << mobility->getSpeed() << "," << rcv_speed_avg << std::endl;
-        
-        // calc lof
-        lof(cur_points, k_nearest_neighors, minpts);
-        debugfile << "new start car_id: " << car_id << std::endl;
-        for (int i = 0; i < cur_points.size(); i++)
-        {
-            // record debug data
-            debugfile << "neighors Point: " << i << std::endl;
-            debugfile << "Id: " << cur_points[i].id << " Time: " << seconds << " Speed: " << cur_points[i].speed 
-            << " Density: " << cur_points[i].senderCalDensity << " Flow: " << cur_points[i].senderFlow
-            << " lrd: " << cur_points[i].lrd << " lof: " << cur_points[i].lof;
-            if (cur_points[i].lof > lof_threshold) {
-                // abormal
-                debugfile << " abormal car" << std::endl;
-            }
-            {
-                // normal
-                debugfile << " normal car" << std::endl;
-            }
-
         }
         sendDown(bsm);
         scheduleAt(simTime() + 1, wsm);
@@ -293,6 +255,63 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
     // }
 }
 
+void TraCIDemo11p::dataHandle(int time)
+{
+    double rcv_speed_sum = 0;
+    double rcv_flow_sum = 0;
+    density_own = getCurrentDensity(neighbors_number, radir);
+    if (is_with_defence) {
+        debugfile << "new start car_id: " << car_id << " is_with_defence: " << is_with_defence << std::endl;
+        // calc lof
+        lof(cur_points, k_nearest_neighors, minpts);
+        int cnt = 0;
+        for (int i = 0; i < cur_points.size(); i++) {
+            // record debug data
+            debugfile << "neighors Point: " << i << " Id: " << cur_points[i].id << " Time: " << time << " Speed: " << cur_points[i].speed
+                      << " Density: " << cur_points[i].senderCalDensity << " Flow: " << cur_points[i].senderFlow
+                      << " lrd: " << cur_points[i].lrd << " lof: " << cur_points[i].lof;
+            if (cur_points[i].lof > lof_threshold) {
+                // abormal
+                debugfile << " abormal car" << std::endl;
+                ta.reportNodeStatus(cur_points[i].id, true);
+            }
+            else {
+                // normal
+                debugfile << " normal car" << std::endl;
+                rcv_speed_sum += cur_points[i].speed;
+                cnt++;
+            }
+        }
+        if (cnt != 0) {
+            rcv_speed_avg = rcv_speed_sum / cnt;
+        }
+        for (int i = 0; i < cur_points.size(); i++) {
+            if (cur_points[i].lof < lof_threshold) {
+                rcv_flow_sum += rcv_speed_avg * cur_points[i].senderCalDensity;
+            }
+        }
+        rcv_flow_avg = rcv_flow_sum / cnt;
+        flow_own = rcv_speed_avg * density_own;
+    }
+    else {
+        debugfile << "new start car_id: " << car_id << std::endl;
+        for (int i = 0; i < cur_points.size(); i++) {
+            // record debug data
+            debugfile << "neighors Point: " << i << " Id: " << cur_points[i].id << " Time: " << time << " Speed: " << cur_points[i].speed
+                      << " Density: " << cur_points[i].senderCalDensity << " Flow: " << cur_points[i].senderFlow << std::endl;
+            rcv_speed_sum += cur_points[i].speed;
+        }
+        if (cur_points.size() != 0) {
+            rcv_speed_avg = rcv_speed_sum / cur_points.size();
+        }
+        for (int i = 0; i < cur_points.size(); i++) {
+            rcv_flow_sum += rcv_speed_avg * cur_points[i].senderCalDensity;
+        }
+        rcv_flow_sum = rcv_speed_avg / cur_points.size();
+        flow_own = rcv_speed_avg * density_own;
+    }
+}
+
 double TraCIDemo11p::getCurrentDensity(int K, double r)
 {
     double Dk = 0;
@@ -300,10 +319,8 @@ double TraCIDemo11p::getCurrentDensity(int K, double r)
     std::vector<std::pair<double, int>> distances;
     int i = 0;
     // 计算点P到其他点的距离
-    for (auto it = beasons_map.begin(); it != beasons_map.end(); it++) {
-        std::vector<double>& vec = it->second;
-
-        double distance = vec[2];
+    for (int j = 0; j < cur_points.size(); j++) {
+        double distance = cur_points[j].senderPos.distance(curPosition);
         if (distance <= r) {
             distances.push_back(std::make_pair(distance, i));
         }

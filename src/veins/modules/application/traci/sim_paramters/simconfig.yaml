@@ -3,7 +3,7 @@ radir: 500
 neighbors_number: 30
 
 # LOF params
-lof_threshold: 1.8
+lof_threshold: 1.5
 k_distance: 10
 k_nearest_neighors: 5
 minpts: 10
@@ -14,4 +14,6 @@ fake_speed: 0
 fake_density: 5
 fake_flow: 20
 fake_rate: 0.1
-attack_time: 1000
+attack_time: 200
+
+with_defense_cars_rate: 0.2
