@@ -99,6 +99,7 @@ protected:
     static std::ofstream maliciouscarsfile;
     bool is_malicious = false;
     bool is_with_defence = false;
+    bool is_open_debug = false;
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;
     void onWSA(DemoServiceAdvertisment* wsa) override;

@@ -1,6 +1,6 @@
 #car density params
-radir: 500
-neighbors_number: 30
+radir: 2600
+neighbors_number: 20
 
 # LOF params
 lof_threshold: 1.5
@@ -17,3 +17,6 @@ fake_rate: 0.1
 attack_time: 200
 
 with_defense_cars_rate: 0.2
+
+#debug
+is_open_debug: true

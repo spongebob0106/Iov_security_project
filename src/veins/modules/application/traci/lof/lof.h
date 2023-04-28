@@ -26,9 +26,9 @@ public:
     }
     int64_t id;
     Coord senderPos;
-    double speed;
-    double senderCalDensity;
-    double senderFlow;
+    float speed;
+    float senderCalDensity;
+    float senderFlow;
     // lof
     float kDistance;
     float lrd;

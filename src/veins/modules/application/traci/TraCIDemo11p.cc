@@ -44,6 +44,7 @@ void TraCIDemo11p::getSimparamters()
     sybil_params.fake_flow = config["fake_flow"].as<double>();
     sybil_params.fake_rate = config["fake_rate"].as<double>();
     sybil_params.attack_time = config["attack_time"].as<int>();
+    is_open_debug = config["is_open_debug"].as<bool>();
 }
 
 
@@ -66,8 +67,8 @@ void TraCIDemo11p::initialize(int stage)
            if (pos != std::string::npos) {
                externalid.erase(pos, 1);
            }
-        std::string file_name = "/home/veins/src/veins/src/veins/modules/application/traci/data/data_" + externalid + ".csv";
-        std::string debug_file_name = "/home/veins/src/veins/src/veins/modules/application/traci/data/debug_" + externalid + ".log";
+        std::string file_name = "/home/veins/src/veins/src/veins/modules/application/traci/data/csv/data_" + externalid + ".csv";
+        std::string debug_file_name = "/home/veins/src/veins/src/veins/modules/application/traci/data/log/debug_" + externalid + ".log";
         outfile.open(file_name);
         debugfile.open(debug_file_name);
         outfile << "car_id,time,density_own,flow_own,speed_own,rcv_speed_avg" << std::endl;
@@ -121,6 +122,10 @@ void TraCIDemo11p::onBSM(DemoSafetyMessage* bsm)
     // std::snprintf(s, 150, "notify-send normal \"Car ID: #%ld receive ID :%ld \"", car_id, bsm->getCarid());
     // std::system(s);
     findHost()->getDisplayString().setTagArg("i", 1, "green");
+    if (bsm->getCarid() == 0)
+    {
+        return;
+    }
     last_points.assign(cur_points.begin(), cur_points.end());
     int i = 0;
     for (; i < cur_points.size(); i++)
@@ -260,24 +265,32 @@ void TraCIDemo11p::dataHandle(int time)
     double rcv_speed_sum = 0;
     double rcv_flow_sum = 0;
     density_own = getCurrentDensity(neighbors_number, radir);
-    if (is_with_defence) {
-        debugfile << "new start car_id: " << car_id << " is_with_defence: " << is_with_defence << std::endl;
+    if (is_with_defence && attack_flag == true) {
+        if (is_open_debug) {
+            debugfile << "new start car_id: " << car_id << " is_with_defence: " << is_with_defence << std::endl;
+        }
         // calc lof
         lof(cur_points, k_nearest_neighors, minpts);
         int cnt = 0;
         for (int i = 0; i < cur_points.size(); i++) {
-            // record debug data
-            debugfile << "neighors Point: " << i << " Id: " << cur_points[i].id << " Time: " << time << " Speed: " << cur_points[i].speed
-                      << " Density: " << cur_points[i].senderCalDensity << " Flow: " << cur_points[i].senderFlow
-                      << " lrd: " << cur_points[i].lrd << " lof: " << cur_points[i].lof;
+            if (is_open_debug) {
+                // record debug data
+                debugfile << "neighors Point: " << i << " Id: " << cur_points[i].id << " Time: " << time << " Speed: " << cur_points[i].speed
+                          << " Density: " << cur_points[i].senderCalDensity << " Flow: " << cur_points[i].senderFlow
+                          << " lrd: " << cur_points[i].lrd << " lof: " << cur_points[i].lof;
+            }
             if (cur_points[i].lof > lof_threshold) {
                 // abormal
-                debugfile << " abormal car" << std::endl;
+                if (is_open_debug) {
+                    debugfile << " abormal car" << std::endl;
+                }
                 ta.reportNodeStatus(cur_points[i].id, true);
             }
             else {
                 // normal
-                debugfile << " normal car" << std::endl;
+                if (is_open_debug) {
+                    debugfile << " normal car" << std::endl;
+                }
                 rcv_speed_sum += cur_points[i].speed;
                 cnt++;
             }
@@ -294,11 +307,15 @@ void TraCIDemo11p::dataHandle(int time)
         flow_own = rcv_speed_avg * density_own;
     }
     else {
-        debugfile << "new start car_id: " << car_id << std::endl;
+        if (is_open_debug) {
+            debugfile << "new start car_id: " << car_id << std::endl;
+        }
         for (int i = 0; i < cur_points.size(); i++) {
-            // record debug data
-            debugfile << "neighors Point: " << i << " Id: " << cur_points[i].id << " Time: " << time << " Speed: " << cur_points[i].speed
-                      << " Density: " << cur_points[i].senderCalDensity << " Flow: " << cur_points[i].senderFlow << std::endl;
+            if (is_open_debug) {
+                // record debug data
+                debugfile << "neighors Point: " << i << " Id: " << cur_points[i].id << " Time: " << time << " Speed: " << cur_points[i].speed
+                          << " Density: " << cur_points[i].senderCalDensity << " Flow: " << cur_points[i].senderFlow << " distance: " << cur_points[i].senderPos.distance(curPosition) << std::endl;
+            }
             rcv_speed_sum += cur_points[i].speed;
         }
         if (cur_points.size() != 0) {
@@ -340,8 +357,9 @@ double TraCIDemo11p::getCurrentDensity(int K, double r)
         Dk += distances[i].first;
     }
     Dk /= K;
-
     // 计算密度估计值
-    rho = (K / (M_PI * Dk * Dk)) * 1000;
+    rho = (K / (M_PI * Dk)) * 10;
+    // rho = Dk / 5000;
+    debugfile << "DK " << Dk << " K: "  <<  K << " rho: " << rho << std::endl;
     return rho;
 }
