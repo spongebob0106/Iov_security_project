@@ -1,9 +1,9 @@
 #car density params
-radir: 2600
+radir: 1000
 neighbors_number: 20
 
 # LOF params
-lof_threshold: 1.5
+lof_threshold: 1.9
 k_distance: 10
 k_nearest_neighors: 5
 minpts: 10
@@ -13,7 +13,7 @@ fake_id: 1
 fake_speed: 0
 fake_density: 5
 fake_flow: 20
-fake_rate: 0.1
+fake_rate: 0.05
 attack_time: 200
 
 with_defense_cars_rate: 0.2

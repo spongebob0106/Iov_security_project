@@ -39,10 +39,10 @@ void TraCIDemo11p::getSimparamters()
     minpts = config["minpts"].as<int>();
     with_defense_cars_rate = config["with_defense_cars_rate"].as<float>();
     sybil_params.fake_id = config["fake_id"].as<int>();
-    sybil_params.fake_speed = config["fake_speed"].as<double>();
-    sybil_params.fake_density = config["fake_density"].as<double>();
-    sybil_params.fake_flow = config["fake_flow"].as<double>();
-    sybil_params.fake_rate = config["fake_rate"].as<double>();
+    sybil_params.fake_speed = config["fake_speed"].as<float>();
+    sybil_params.fake_density = config["fake_density"].as<float>();
+    sybil_params.fake_flow = config["fake_flow"].as<float>();
+    sybil_params.fake_rate = config["fake_rate"].as<float>();
     sybil_params.attack_time = config["attack_time"].as<int>();
     is_open_debug = config["is_open_debug"].as<bool>();
 }
@@ -62,11 +62,11 @@ void TraCIDemo11p::initialize(int stage)
         // sim paramters setup
         getSimparamters();
         // output data
-        std::string externalid =  mobility->getExternalId();
+        std::string externalid = mobility->getExternalId();
         int pos = externalid.find(".");
-           if (pos != std::string::npos) {
-               externalid.erase(pos, 1);
-           }
+        if (pos != std::string::npos) {
+            externalid.erase(pos, 1);
+        }
         std::string file_name = "/home/veins/src/veins/src/veins/modules/application/traci/data/csv/data_" + externalid + ".csv";
         std::string debug_file_name = "/home/veins/src/veins/src/veins/modules/application/traci/data/log/debug_" + externalid + ".log";
         outfile.open(file_name);
@@ -86,6 +86,13 @@ void TraCIDemo11p::initialize(int stage)
         TraCIDemo11pMessage* wsm = new TraCIDemo11pMessage();
         populateWSM(wsm);
         is_with_defence = bernoulli(with_defense_cars_rate);
+        is_malicious = bernoulli(sybil_params.fake_rate);
+        if (is_malicious) {
+            carstypefile << "malicious car: " << car_id << std::endl;
+        }
+        if (is_with_defence) {
+            carstypefile << "with defence car: " << car_id << std::endl;
+        }
         // wsm->setDemoData(mobility->getRoadId().c_str());
         scheduleAt(simTime() + 1, wsm);
     }
@@ -161,33 +168,33 @@ void TraCIDemo11p::handleSelfMsg(cMessage* msg)
         // start sybil attack
         if (seconds == sybil_params.attack_time && attack_flag == false)
         {
-            // Assign malicious cars
-            int malicious_car_numbers = cars.size() * sybil_params.fake_rate;
-            std::random_device rd;
-            std::mt19937 gen(rd());
-            std::uniform_int_distribution<int> dis(0, cars.size()-1);
-            for (int i = 0; i < malicious_car_numbers; i++) {
-                int randomIndex = dis(gen);
-                cars[randomIndex].second = true;
-                maliciouscarsfile << cars[randomIndex].first << std::endl;
-            }
+            // // Assign malicious cars
+            // int malicious_car_numbers = cars.size() * sybil_params.fake_rate;
+            // std::random_device rd;
+            // std::mt19937 gen(rd());
+            // std::uniform_int_distribution<int> dis(0, cars.size()-1);
+            // for (int i = 0; i < malicious_car_numbers; i++) {
+            //     int randomIndex = dis(gen);
+            //     cars[randomIndex].second = true;
+            //     carstypefile << cars[randomIndex].first << std::endl;
+            // }
             attack_flag = true;
         }
-        if (attack_flag == true && is_malicious == false)
-        {
-            for (int i = 0; i < cars.size(); i++)
-            {
-                if (cars[i].first == car_id)
-                {
-                    is_malicious = cars[i].second;
-                }
-            }
-        }
+        // if (attack_flag == true && is_malicious == false)
+        // {
+        //     for (int i = 0; i < cars.size(); i++)
+        //     {
+        //         if (cars[i].first == car_id)
+        //         {
+        //             is_malicious = cars[i].second;
+        //         }
+        //     }
+        // }
 
         outfile << car_id << "," << seconds << "," << density_own << "," << flow_own << "," << mobility->getSpeed() << "," << rcv_speed_avg << std::endl;
         dataHandle(seconds);
         // package bsm message
-        if (!is_malicious) {
+        if (!(is_malicious && attack_flag)) {
             bsm->setCarid(car_id);
             bsm->setCarSpeed(curSpeed.length());
             bsm->setSenderCalDensity(density_own);
@@ -215,7 +222,7 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
     findHost()->getDisplayString().setTagArg("i", 1, "red");
     DemoSafetyMessage* bsm = new DemoSafetyMessage();
     populateWSM(bsm);
-    if (!is_malicious)
+    if (!(is_malicious && attack_flag))
     {
         bsm->setCarid(car_id);
         bsm->setCarSpeed(curSpeed.length());
@@ -262,10 +269,10 @@ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
 
 void TraCIDemo11p::dataHandle(int time)
 {
-    double rcv_speed_sum = 0;
-    double rcv_flow_sum = 0;
+    float rcv_speed_sum = 0;
+    float rcv_flow_sum = 0;
     density_own = getCurrentDensity(neighbors_number, radir);
-    if (is_with_defence && attack_flag == true) {
+    if (is_with_defence) {
         if (is_open_debug) {
             debugfile << "new start car_id: " << car_id << " is_with_defence: " << is_with_defence << std::endl;
         }
@@ -284,6 +291,7 @@ void TraCIDemo11p::dataHandle(int time)
                 if (is_open_debug) {
                     debugfile << " abormal car" << std::endl;
                 }
+                // Report the malicious node to TA
                 ta.reportNodeStatus(cur_points[i].id, true);
             }
             else {
@@ -324,20 +332,20 @@ void TraCIDemo11p::dataHandle(int time)
         for (int i = 0; i < cur_points.size(); i++) {
             rcv_flow_sum += rcv_speed_avg * cur_points[i].senderCalDensity;
         }
-        rcv_flow_sum = rcv_speed_avg / cur_points.size();
+        rcv_flow_avg = rcv_flow_sum / cur_points.size();
         flow_own = rcv_speed_avg * density_own;
     }
 }
 
-double TraCIDemo11p::getCurrentDensity(int K, double r)
+float TraCIDemo11p::getCurrentDensity(int K, float r)
 {
-    double Dk = 0;
-    double rho = 0;
-    std::vector<std::pair<double, int>> distances;
+    float Dk = 0;
+    float rho = 0;
+    std::vector<std::pair<float, int>> distances;
     int i = 0;
     // 计算点P到其他点的距离
     for (int j = 0; j < cur_points.size(); j++) {
-        double distance = cur_points[j].senderPos.distance(curPosition);
+        float distance = cur_points[j].senderPos.distance(curPosition);
         if (distance <= r) {
             distances.push_back(std::make_pair(distance, i));
         }
@@ -358,8 +366,10 @@ double TraCIDemo11p::getCurrentDensity(int K, double r)
     }
     Dk /= K;
     // 计算密度估计值
-    rho = (K / (M_PI * Dk)) * 10;
+    rho = (K / (M_PI * Dk *Dk)) * 1000;
     // rho = Dk / 5000;
-    debugfile << "DK " << Dk << " K: "  <<  K << " rho: " << rho << std::endl;
+    if (is_open_debug) {
+        debugfile << "DK " << Dk << " K: " << K << " rho: " << rho << std::endl;
+    }
     return rho;
 }

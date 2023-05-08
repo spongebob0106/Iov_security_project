@@ -51,9 +51,9 @@ namespace veins {
  */
 struct SybilAttackParams {
     int fake_id;
-    double fake_speed;
-    double fake_density;
-    double fake_flow;
+    float fake_speed;
+    float fake_density;
+    float fake_flow;
     float fake_rate;
     int attack_time;
 };
@@ -76,10 +76,10 @@ protected:
     IDManage* id_manage = nullptr;
     CryptoManage* crypto_manage = nullptr;
     int64_t car_id;
-    double rcv_speed_avg;
-    double rcv_flow_avg;
-    double flow_own;
-    double density_own;
+    float rcv_speed_avg;
+    float rcv_flow_avg;
+    float flow_own;
+    float density_own;
     std::vector<Point> last_points;
     std::vector<Point> cur_points;
     // Variadic parameters
@@ -96,7 +96,7 @@ protected:
     static bool attack_flag; 
     std::ofstream outfile;
     std::ofstream debugfile;
-    static std::ofstream maliciouscarsfile;
+    static std::ofstream carstypefile;
     bool is_malicious = false;
     bool is_with_defence = false;
     bool is_open_debug = false;
@@ -108,13 +108,13 @@ protected:
     void handleSelfMsg(cMessage* msg) override;
     void handlePositionUpdate(cObject* obj) override;
     
-    double getCurrentDensity(int K, double r);
+    float getCurrentDensity(int K, float r);
     void dataHandle(int time);
 };
 
 // sttaic init
 bool TraCIDemo11p::attack_flag = false;
 std::vector<std::pair<int64_t, bool>> TraCIDemo11p::cars = {};
-std::ofstream TraCIDemo11p::maliciouscarsfile("/home/veins/src/veins/src/veins/modules/application/traci/data/malicious_cars.log");
+std::ofstream TraCIDemo11p::carstypefile("/home/veins/src/veins/src/veins/modules/application/traci/data/cars_type.log");
 
 } // namespace veins

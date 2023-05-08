@@ -11,6 +11,7 @@ doc/doxy
 doc/neddoc
 src/veins/modules/application/traci/data/csv/*.csv
 src/veins/modules/application/traci/data/log/*.log
+src/veins/modules/application/traci/data/*.csv
 src/veins/modules/application/traci/data/*.log
 src/veins/modules/application/traci/data/*.png
 

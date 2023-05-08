@@ -44,7 +44,7 @@ double computeDistance(Point& a, Point& b) {
     double sum = 0.0;
     // sum += a.senderPos.sqrdist(b.senderPos);
     sum += pow(a.speed - b.speed, 2);;
-    sum += pow(a.senderCalDensity - b.senderCalDensity, 2);
+    sum += pow(a.senderCalDensity - b.senderCalDensity, 2) * 10;
     sum += pow(a.senderFlow - b.senderFlow, 2);
     return sqrt(sum);
 }
