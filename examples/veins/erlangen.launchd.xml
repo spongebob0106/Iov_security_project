@@ -33,9 +33,9 @@
 
 <!-- debug config -->
 <launch>
-    <copy file="erlangen.net.xml" />
-    <copy file="erlangen.rou.xml" />
-    <copy file="erlangen.poly.xml" />
+    <copy file="guanggong.net.xml" />
+    <copy file="guanggong.rou.xml" />
+    <copy file="guanggong.poly.xml" />
     <copy file="erlangen.sumo.cfg" type="config" />
 </launch>
 

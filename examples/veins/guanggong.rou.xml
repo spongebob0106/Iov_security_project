@@ -38,5 +38,5 @@
 <routes>
    <vType id="vtype0" accel="2.6" decel="4.5" sigma="0.5" length="2.5" minGap="4" maxSpeed="14" color="1,1,0"/>
    <route id="route0" edges="291575015 852913396 345262158 813454823 345262154#0 345262154#1 345262154#2 340297183#0 340297183#1 340297183#2 341351643 341351640#0 341351640#1 341351640#2 341351651 373570474#0 373570474#1"/>
-   <flow id="flow0" type="vtype0" route="route0" begin="0" period="3" number="400"/>
+   <flow id="flow0" type="vtype0" route="route0" begin="0" period="2" number="400"/>
 </routes>

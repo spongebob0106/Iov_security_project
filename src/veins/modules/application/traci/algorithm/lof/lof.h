@@ -4,31 +4,28 @@
 #include <stdarg.h>
 #include <exception>
 #include <cmath>
-#include "veins/base/utils/Coord.h"
+#include "veins/modules/application/traci/algorithm/basepoint.h"
+
 namespace veins {
 
+namespace lof{
 //The 'k' in k-nearest-neighbors
 static int K = 5;
 
 //The number of points to compute reachability density
 static int MINPTS = 10;
 
-class Point
+class Point : public BasePoint
 {
 public:
     Point() noexcept
     {
     }
 
-    Point(int64_t id_, Coord senderPos_, double speed_, double senderCalDensity_, double senderFlow_): id(id_), senderPos(senderPos_), 
-        speed(speed_), senderCalDensity(senderCalDensity_), senderFlow(senderFlow_)
+    Point(int64_t id_, Coord senderPos_, double speed_, double senderCalDensity_, double senderFlow_)
+        : BasePoint(id_, senderPos_, speed_, senderCalDensity_, senderFlow_)
     {
     }
-    int64_t id;
-    Coord senderPos;
-    float speed;
-    float senderCalDensity;
-    float senderFlow;
     // lof
     float kDistance;
     float lrd;
@@ -212,5 +209,6 @@ void lof(std::vector<Point>& data, int k, int minpts)
 	computeReachDensity(data);
 	computeLOF(data); 
 }
-}
+} // namespace lof
+} // namespace veins
 #endif

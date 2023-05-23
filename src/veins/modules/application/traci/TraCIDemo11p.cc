@@ -31,20 +31,29 @@ void TraCIDemo11p::getSimparamters()
 {
 
     YAML::Node config = YAML::LoadFile("/home/veins/src/veins/src/veins/modules/application/traci/sim_paramters/simconfig.yaml");
+    // density
     radir = config["radir"].as<int>();
     neighbors_number = config["neighbors_number"].as<int>();
+    // lof
     lof_threshold = config["lof_threshold"].as<float>();
     k_distance = config["k_distance"].as<int>();
     k_nearest_neighors = config["k_nearest_neighors"].as<int>();
     minpts = config["minpts"].as<int>();
-    with_defense_cars_rate = config["with_defense_cars_rate"].as<float>();
+    // sybil attack
     sybil_params.fake_id = config["fake_id"].as<int>();
     sybil_params.fake_speed = config["fake_speed"].as<float>();
     sybil_params.fake_density = config["fake_density"].as<float>();
     sybil_params.fake_flow = config["fake_flow"].as<float>();
     sybil_params.fake_rate = config["fake_rate"].as<float>();
     sybil_params.attack_time = config["attack_time"].as<int>();
+    // others
+    with_defense_cars_rate = config["with_defense_cars_rate"].as<float>();
     is_open_debug = config["is_open_debug"].as<bool>();
+    //iforest
+    numtrees = config["numtrees"].as<uint32_t>();
+    maxheight = config["maxheight"].as<uint32_t>();
+    randomseed = config["randomseed"].as<uint32_t>();
+    iforset_threshold = config["iforset_threshold"].as<float>();
 }
 
 
@@ -148,7 +157,6 @@ void TraCIDemo11p::onBSM(DemoSafetyMessage* bsm)
     }
     if (i == cur_points.size() || cur_points.size() == 0)
     {
-        Point point;
         point.senderPos = bsm->getSenderPos();
         point.speed = bsm->getCarSpeed();    
         point.senderCalDensity = bsm->getSenderCalDensity();
@@ -168,28 +176,8 @@ void TraCIDemo11p::handleSelfMsg(cMessage* msg)
         // start sybil attack
         if (seconds == sybil_params.attack_time && attack_flag == false)
         {
-            // // Assign malicious cars
-            // int malicious_car_numbers = cars.size() * sybil_params.fake_rate;
-            // std::random_device rd;
-            // std::mt19937 gen(rd());
-            // std::uniform_int_distribution<int> dis(0, cars.size()-1);
-            // for (int i = 0; i < malicious_car_numbers; i++) {
-            //     int randomIndex = dis(gen);
-            //     cars[randomIndex].second = true;
-            //     carstypefile << cars[randomIndex].first << std::endl;
-            // }
             attack_flag = true;
         }
-        // if (attack_flag == true && is_malicious == false)
-        // {
-        //     for (int i = 0; i < cars.size(); i++)
-        //     {
-        //         if (cars[i].first == car_id)
-        //         {
-        //             is_malicious = cars[i].second;
-        //         }
-        //     }
-        // }
 
         outfile << car_id << "," << seconds << "," << density_own << "," << flow_own << "," << mobility->getSpeed() << "," << rcv_speed_avg << std::endl;
         dataHandle(seconds);
@@ -276,9 +264,10 @@ void TraCIDemo11p::dataHandle(int time)
         if (is_open_debug) {
             debugfile << "new start car_id: " << car_id << " is_with_defence: " << is_with_defence << std::endl;
         }
+        fix_points.clear();
+#if IS_USE_LOF
         // calc lof
-        lof(cur_points, k_nearest_neighors, minpts);
-        int cnt = 0;
+        lof::lof(cur_points, k_nearest_neighors, minpts);
         for (int i = 0; i < cur_points.size(); i++) {
             if (is_open_debug) {
                 // record debug data
@@ -299,19 +288,59 @@ void TraCIDemo11p::dataHandle(int time)
                 if (is_open_debug) {
                     debugfile << " normal car" << std::endl;
                 }
-                rcv_speed_sum += cur_points[i].speed;
-                cnt++;
+                fix_points.push_back(cur_points[i]);
             }
         }
-        if (cnt != 0) {
-            rcv_speed_avg = rcv_speed_sum / cnt;
+#elif IS_USE_ISOLATIONFOREST
+        if (!iforest::isolation_iforest(forest, cur_points, randomseed, numtrees, maxheight)) {
+            EV_ERROR << "Failed to build Isolation Forest" << std::endl; 
         }
+        for (int i = 0; i < cur_points.size(); i++)
+        {
+            if (is_open_debug) {
+                // record debug data
+                debugfile << "neighors Point: " << i << " Id: " << cur_points[i].id << " Time: " << time << " Speed: " << cur_points[i].speed
+                          << " Density: " << cur_points[i].senderCalDensity << " Flow: " << cur_points[i].senderFlow
+                          << " anmoly_score: " << cur_points[i].anomaly_score;
+            }
+            if (cur_points[i].anomaly_score < iforset_threshold)
+            {
+                // abormal
+                if (is_open_debug) {
+                    debugfile << " abormal car" << std::endl;
+                }
+                // Report the malicious node to TA
+                ta.reportNodeStatus(cur_points[i].id, true);
+            }
+            else
+            {
+                // normal
+                if (is_open_debug) {
+                    debugfile << " normal car" << std::endl;
+                }
+                fix_points.push_back(cur_points[i]);
+            }
+        }
+#else
         for (int i = 0; i < cur_points.size(); i++) {
-            if (cur_points[i].lof < lof_threshold) {
-                rcv_flow_sum += rcv_speed_avg * cur_points[i].senderCalDensity;
+            if (is_open_debug) {
+                // record debug data
+                debugfile << "neighors Point: " << i << " Id: " << cur_points[i].id << " Time: " << time << " Speed: " << cur_points[i].speed
+                          << " Density: " << cur_points[i].senderCalDensity << " Flow: " << cur_points[i].senderFlow << " distance: " << cur_points[i].senderPos.distance(curPosition) << std::endl;
             }
+            fix_points.push_back(cur_points[i]);
         }
-        rcv_flow_avg = rcv_flow_sum / cnt;
+#endif 
+        for (int i = 0; i < fix_points.size(); i++) {
+            rcv_speed_sum += fix_points[i].speed;
+        }
+        if (fix_points.size() != 0) {
+            rcv_speed_avg = rcv_speed_sum / fix_points.size();
+        }
+        for (int i = 0; i < fix_points.size(); i++) {
+            rcv_flow_sum += rcv_speed_avg * fix_points[i].senderCalDensity;
+        }
+        rcv_flow_avg = rcv_flow_sum / fix_points.size();
         flow_own = rcv_speed_avg * density_own;
     }
     else {

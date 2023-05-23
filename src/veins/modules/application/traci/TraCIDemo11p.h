@@ -24,7 +24,8 @@
 
 #include "veins/modules/application/ieee80211p/DemoBaseApplLayer.h"
 #include "veins/modules/application/traci/TrustAuthority.h"
-#include "veins/modules/application/traci/lof/lof.h"
+#include "veins/modules/application/traci/algorithm/lof/lof.h"
+#include "veins/modules/application/traci/algorithm/isolationforest/isolation_forest.h"
 #include <map>
 #include <vector>
 #include <yaml-cpp/yaml.h>
@@ -34,6 +35,8 @@
 #include <random>
 #include <algorithm>
 
+#define IS_USE_LOF 0
+#define IS_USE_ISOLATIONFOREST 1
 namespace veins {
 
 /**
@@ -80,16 +83,19 @@ protected:
     float rcv_flow_avg;
     float flow_own;
     float density_own;
-    std::vector<Point> last_points;
-    std::vector<Point> cur_points;
-    // Variadic parameters
+    // car parameters
     int radir;
     int neighbors_number;
+    // lof parameters
     float lof_threshold;
     int k_distance;
     int k_nearest_neighors;
     int minpts;
-    float with_defense_cars_rate;
+    // isolation_forest
+    uint32_t numtrees;
+    uint32_t maxheight;
+    uint32_t randomseed;
+    float iforset_threshold;
     //sybli params
     SybilAttackParams sybil_params;
     static std::vector<std::pair<int64_t, bool>> cars;
@@ -100,6 +106,25 @@ protected:
     bool is_malicious = false;
     bool is_with_defence = false;
     bool is_open_debug = false;
+    float with_defense_cars_rate;
+    // algorithm
+#if IS_USE_LOF
+    lof::Point point;
+    std::vector<lof::Point> last_points;
+    std::vector<lof::Point> cur_points;
+    std::vector<lof::Point> fix_points;
+#elif IS_USE_ISOLATIONFOREST
+    iforest::IsolationForest<float, 4> forest;
+    iforest::Point point;
+    std::vector<iforest::Point> last_points;
+    std::vector<iforest::Point> cur_points;
+    std::vector<iforest::Point> fix_points;
+#else
+    BasePoint point;
+    std::vector<BasePoint> last_points;
+    std::vector<BasePoint> cur_points;
+    std::vector<BasePoint> fix_points;
+#endif 
 protected:
     void onWSM(BaseFrame1609_4* wsm) override;
     void onWSA(DemoServiceAdvertisment* wsa) override;
